@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Play, Square, Languages, Volume2, AlertCircle, Snail, Bookmark, BookmarkCheck, History, Trash2, ArrowRightLeft, Copy, Check, Sun, Moon } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Play, Square, Languages, Volume2, Snail, Bookmark, BookmarkCheck, History, Trash2, ArrowRightLeft, Copy, Check, Sun, Moon } from 'lucide-react';
 import './index.css';
 
 interface TranslationItem {
