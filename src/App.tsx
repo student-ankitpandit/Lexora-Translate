@@ -294,10 +294,22 @@ function App() {
       const baseUrl = import.meta.env.PROD ? '/api/tts' : 'http://localhost:8000/tts';
       const url = `${baseUrl}?text=${encodeURIComponent(safeText)}&lang=${langCode}&slow=${isSlowMode}`;
       
-      const audio = new Audio(url);
+      // Fetch the audio first to check for HTTP errors (like unsupported languages)
+      const response = await fetch(url);
       
-      // Enforce slow mode on the client side to ensure it works instantly 
-      // without needing to re-fetch or restart the backend.
+      if (!response.ok) {
+        setIsPlayingTranslated(false);
+        setIsPlayingOriginal(false);
+        const langName = SUPPORTED_LANGUAGES.find(l => l.code === langCode)?.name || langCode;
+        setError(`Pronunciation is currently not supported by Google TTS for ${langName}.`);
+        return;
+      }
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      
+      const audio = new Audio(objectUrl);
+      
       if (isSlowMode) {
         audio.playbackRate = 0.65;
         audio.preservesPitch = true;
@@ -306,12 +318,14 @@ function App() {
       audio.onended = () => {
         setIsPlayingTranslated(false);
         setIsPlayingOriginal(false);
+        URL.revokeObjectURL(objectUrl); // clean up memory
       };
       
       audio.onerror = () => {
         setIsPlayingTranslated(false);
         setIsPlayingOriginal(false);
-        setError('Failed to play audio stream from server.');
+        setError('Failed to decode audio stream.');
+        URL.revokeObjectURL(objectUrl);
       };
 
       audioRef.current = audio;
@@ -321,7 +335,7 @@ function App() {
       console.error('Playback error', e);
       setIsPlayingTranslated(false);
       setIsPlayingOriginal(false);
-      setError('Audio playback failed. Ensure the backend server is running.');
+      setError('Network error: Ensure your internet connection or local server is running.');
     }
   };
 

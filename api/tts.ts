@@ -36,8 +36,11 @@ export default async function handler(req: any, res: any) {
     res.setHeader('Cache-Control', 'public, max-age=3600');
     return res.status(200).send(buffer);
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('TTS error:', error);
-    return res.status(500).send('TTS Generation Failed');
+    return res.status(500).json({ 
+      error: 'TTS Generation Failed', 
+      details: error.message || error.toString() 
+    });
   }
 }
