@@ -618,7 +618,7 @@ function App() {
 
       <div style={{ marginTop: '2.5rem', textAlign: 'center' }}>
         <a 
-          href="https://github.com/dummy/lexora-translate" 
+          href="https://github.com/student-ankitpandit/Lexora-Translate" 
           target="_blank" 
           rel="noopener noreferrer"
           style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--text-color)', textDecoration: 'none', opacity: 0.6, transition: 'opacity 0.2s' }}
