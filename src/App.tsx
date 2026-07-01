@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Play, Square, Languages, Volume2, Snail, Bookmark, BookmarkCheck, History, Trash2, ArrowRightLeft, Copy, Check, Sun, Moon } from 'lucide-react';
 import './index.css';
 
@@ -123,8 +123,9 @@ function App() {
   const [word, setWord] = useState('');
   const [translatedWord, setTranslatedWord] = useState('');
   const [romanization, setRomanization] = useState('');
-  const [sourceLang, setSourceLang] = useState('en');
+  const [sourceLang, setSourceLang] = useState('auto');
   const [targetLang, setTargetLang] = useState('ru');
+  const [detectedLang, setDetectedLang] = useState<string | null>(null);
   const [isSlowMode, setIsSlowMode] = useState(false);
   
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -155,12 +156,19 @@ function App() {
   }, [savedItems]);
 
   const handleSwapLanguages = () => {
-    setSourceLang(targetLang);
-    setTargetLang(sourceLang);
+    if (sourceLang === 'auto') {
+      setSourceLang(targetLang);
+      setTargetLang(detectedLang || 'en');
+    } else {
+      setSourceLang(targetLang);
+      setTargetLang(sourceLang);
+    }
+    
     if (translatedWord) {
       setWord(translatedWord);
       setTranslatedWord('');
       setRomanization('');
+      setDetectedLang(null);
     }
   };
 
@@ -206,7 +214,7 @@ function App() {
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const handleTranslate = async () => {
+  const handleTranslate = useCallback(async () => {
     if (!word.trim()) {
       setError('Please enter text to translate');
       return;
@@ -235,6 +243,14 @@ function App() {
         }
       });
 
+      let dLang = null;
+      if (sourceLang === 'auto' && data[2]) {
+        dLang = data[2];
+        setDetectedLang(dLang);
+      } else {
+        setDetectedLang(null);
+      }
+
       setTranslatedWord(resultText);
       setRomanization(resultRomanization);
 
@@ -244,7 +260,7 @@ function App() {
         sourceText: word,
         translatedText: resultText,
         romanization: resultRomanization,
-        sourceLang,
+        sourceLang: sourceLang === 'auto' ? (dLang || 'en') : sourceLang,
         targetLang,
         timestamp: Date.now()
       };
@@ -261,7 +277,22 @@ function App() {
     } finally {
       setIsTranslating(false);
     }
-  };
+  }, [word, sourceLang, targetLang]);
+
+  useEffect(() => {
+    if (!word.trim()) {
+      setTranslatedWord('');
+      setRomanization('');
+      setDetectedLang(null);
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(() => {
+      handleTranslate();
+    }, 600);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [word, sourceLang, targetLang, handleTranslate]);
 
   const playAudio = async (textToPlay: string, langCode: string, isTranslated: boolean) => {
     if (!textToPlay.trim()) {
@@ -407,12 +438,18 @@ function App() {
           
           {/* Left Column (Source) */}
           <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <select
+              <select
               id="source-lang"
               className="select-input"
               value={sourceLang}
-              onChange={(e) => setSourceLang(e.target.value)}
+              onChange={(e) => {
+                setSourceLang(e.target.value);
+                setDetectedLang(null);
+              }}
             >
+              <option value="auto">
+                Auto Detect {detectedLang ? `(${SUPPORTED_LANGUAGES.find(l => l.code === detectedLang)?.name || detectedLang})` : ''}
+              </option>
               {SUPPORTED_LANGUAGES.map((lang) => (
                 <option key={`src-${lang.code}`} value={lang.code}>{lang.name}</option>
               ))}
@@ -428,12 +465,13 @@ function App() {
                 onChange={(e) => {
                   setWord(e.target.value);
                   setError('');
+                  setDetectedLang(null);
                 }}
               />
               <button
                 className="icon-button"
                 style={{ position: 'absolute', bottom: '12px', right: '12px', background: 'rgba(168, 85, 247, 0.1)', border: 'none', color: '#a855f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', transition: 'all 0.2s' }}
-                onClick={() => playAudio(word, sourceLang, false)}
+                onClick={() => playAudio(word, sourceLang === 'auto' ? (detectedLang || 'en') : sourceLang, false)}
                 title="Listen to original text"
               >
                 {isPlayingOriginal ? <Square size={18} fill="currentColor" /> : <Volume2 size={18} />}
